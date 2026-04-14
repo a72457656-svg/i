@@ -1,0 +1,255 @@
+--==================================================
+-- VFLY ULTIMATE EDITION
+-- 作成者：クリームブリュレ
+--==================================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- 既存UI削除
+local old = playerGui:FindFirstChild("VFlyUI")
+if old then
+	old:Destroy()
+end
+
+--------------------------------------------------
+-- 設定
+--------------------------------------------------
+
+local flying = false
+local SPEED = 100
+local MIN_SPEED = 0
+local MAX_SPEED = 1000000
+local SPEED_STEP = 1
+local SMOOTHNESS = 12
+
+--------------------------------------------------
+-- UI作成
+--------------------------------------------------
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "VFlyUI"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.Parent = playerGui
+
+-- メインUI
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0,200,0,190)
+mainFrame.Position = UDim2.new(0.1,0,0.4,0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+-- 表示ボタン
+local showButton = Instance.new("TextButton")
+showButton.Size = UDim2.new(0,100,0,40)
+showButton.Position = mainFrame.Position
+showButton.Text = "Open UI"
+showButton.TextScaled = true
+showButton.BackgroundColor3 = Color3.fromRGB(40,40,40)
+showButton.TextColor3 = Color3.new(1,1,1)
+showButton.Visible = false
+showButton.Active = true
+showButton.Draggable = true
+showButton.Parent = screenGui
+
+--------------------------------------------------
+-- 作成者ラベル
+--------------------------------------------------
+
+local creatorLabel = Instance.new("TextLabel")
+creatorLabel.Size = UDim2.new(1,-10,0,20)
+creatorLabel.Position = UDim2.new(0,5,0,0)
+creatorLabel.BackgroundTransparency = 1
+creatorLabel.Text = "クリームブリュレ"
+creatorLabel.TextScaled = true
+creatorLabel.TextColor3 = Color3.fromRGB(255,230,180)
+creatorLabel.Font = Enum.Font.GothamBold
+creatorLabel.Parent = mainFrame
+
+--------------------------------------------------
+-- ボタン類
+--------------------------------------------------
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(1,-10,0,35)
+toggleButton.Position = UDim2.new(0,5,0,25)
+toggleButton.Text = "VFly: OFF"
+toggleButton.TextScaled = true
+toggleButton.BackgroundColor3 = Color3.fromRGB(60,60,60)
+toggleButton.TextColor3 = Color3.new(1,1,1)
+toggleButton.Parent = mainFrame
+
+local speedBox = Instance.new("TextBox")
+speedBox.Size = UDim2.new(1,-10,0,30)
+speedBox.Position = UDim2.new(0,5,0,65)
+speedBox.Text = tostring(SPEED)
+speedBox.TextScaled = true
+speedBox.BackgroundColor3 = Color3.fromRGB(45,45,45)
+speedBox.TextColor3 = Color3.new(1,1,1)
+speedBox.ClearTextOnFocus = false
+speedBox.Parent = mainFrame
+
+local minusButton = Instance.new("TextButton")
+minusButton.Size = UDim2.new(0.45,-5,0,30)
+minusButton.Position = UDim2.new(0,5,0,100)
+minusButton.Text = "-"
+minusButton.TextScaled = true
+minusButton.BackgroundColor3 = Color3.fromRGB(70,70,70)
+minusButton.TextColor3 = Color3.new(1,1,1)
+minusButton.Parent = mainFrame
+
+local plusButton = Instance.new("TextButton")
+plusButton.Size = UDim2.new(0.45,-5,0,30)
+plusButton.Position = UDim2.new(0.55,0,0,100)
+plusButton.Text = "+"
+plusButton.TextScaled = true
+plusButton.BackgroundColor3 = Color3.fromRGB(70,70,70)
+plusButton.TextColor3 = Color3.new(1,1,1)
+plusButton.Parent = mainFrame
+
+local hideButton = Instance.new("TextButton")
+hideButton.Size = UDim2.new(1,-10,0,25)
+hideButton.Position = UDim2.new(0,5,0,140)
+hideButton.Text = "Hide UI"
+hideButton.TextScaled = true
+hideButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+hideButton.TextColor3 = Color3.new(1,1,1)
+hideButton.Parent = mainFrame
+
+--------------------------------------------------
+-- UI表示/非表示処理
+--------------------------------------------------
+
+hideButton.MouseButton1Click:Connect(function()
+	showButton.Position = mainFrame.Position
+	mainFrame.Visible = false
+	showButton.Visible = true
+end)
+
+showButton.MouseButton1Click:Connect(function()
+	mainFrame.Position = showButton.Position
+	mainFrame.Visible = true
+	showButton.Visible = false
+end)
+
+--------------------------------------------------
+-- キャラ取得
+--------------------------------------------------
+
+local character
+local hrp
+local humanoid
+local attachment
+local linearVelocity
+local velocity = Vector3.zero
+
+local function setupCharacter(char)
+	character = char
+	hrp = char:WaitForChild("HumanoidRootPart")
+	humanoid = char:WaitForChild("Humanoid")
+end
+
+if player.Character then
+	setupCharacter(player.Character)
+end
+player.CharacterAdded:Connect(setupCharacter)
+
+--------------------------------------------------
+-- 飛行処理
+--------------------------------------------------
+
+local function startFly()
+	if flying or not hrp then return end
+	flying = true
+
+	attachment = Instance.new("Attachment")
+	attachment.Parent = hrp
+
+	linearVelocity = Instance.new("LinearVelocity")
+	linearVelocity.Attachment0 = attachment
+	linearVelocity.MaxForce = math.huge
+	linearVelocity.RelativeTo = Enum.ActuatorRelativeTo.World
+	linearVelocity.VectorVelocity = Vector3.zero
+	linearVelocity.Parent = hrp
+end
+
+local function stopFly()
+	flying = false
+	velocity = Vector3.zero
+
+	if linearVelocity then
+		linearVelocity:Destroy()
+		linearVelocity = nil
+	end
+
+	if attachment then
+		attachment:Destroy()
+		attachment = nil
+	end
+end
+
+RunService.RenderStepped:Connect(function(dt)
+	if not flying or not hrp or not humanoid then return end
+
+	local cam = workspace.CurrentCamera
+	if not cam then return end
+
+	local moveDir = humanoid.MoveDirection
+	local targetVelocity = Vector3.zero
+
+	if moveDir.Magnitude > 0 then
+		local horizontal = Vector3.new(moveDir.X, 0, moveDir.Z)
+		local vertical = Vector3.new(0, cam.CFrame.LookVector.Y * moveDir.Magnitude, 0)
+		local direction = horizontal + vertical
+
+		if direction.Magnitude > 0 then
+			targetVelocity = direction.Unit * SPEED
+		end
+	end
+
+	local alpha = math.clamp(SMOOTHNESS * dt, 0, 1)
+	velocity = velocity:Lerp(targetVelocity, alpha)
+
+	if linearVelocity then
+		linearVelocity.VectorVelocity = velocity
+	end
+end)
+
+--------------------------------------------------
+-- UI操作
+--------------------------------------------------
+
+toggleButton.MouseButton1Click:Connect(function()
+	if flying then
+		stopFly()
+		toggleButton.Text = "VFly: OFF"
+	else
+		startFly()
+		toggleButton.Text = "VFly: ON"
+	end
+end)
+
+plusButton.MouseButton1Click:Connect(function()
+	SPEED = math.clamp(SPEED + SPEED_STEP, MIN_SPEED, MAX_SPEED)
+	speedBox.Text = tostring(SPEED)
+end)
+
+minusButton.MouseButton1Click:Connect(function()
+	SPEED = math.clamp(SPEED - SPEED_STEP, MIN_SPEED, MAX_SPEED)
+	speedBox.Text = tostring(SPEED)
+end)
+
+speedBox.FocusLost:Connect(function()
+	local num = tonumber(speedBox.Text)
+	if num then
+		SPEED = math.clamp(math.floor(num), MIN_SPEED, MAX_SPEED)
+	end
+	speedBox.Text = tostring(SPEED)
+end)
