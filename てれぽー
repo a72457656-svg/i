@@ -1,0 +1,235 @@
+-- Delta Executor iOS対応 小型テレポートメニュー（210x200 + プレイヤー選択 + 25x25表示ボタン）
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "TeleportMenu"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = game:GetService("CoreGui")
+
+-- ==================== メインUI ====================
+local Main = Instance.new("Frame")
+Main.Size = UDim2.new(0, 210, 0, 200)
+Main.Position = UDim2.new(0.5, -105, 0.5, -100)
+Main.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+Main.BorderSizePixel = 0
+Main.Active = true
+Main.Draggable = true
+Main.Visible = true
+Main.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.Parent = Main
+
+-- 上部ドラッグバー
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 35)
+TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = Main
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 12)
+TitleCorner.Parent = TitleBar
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -80, 1, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "📍 TP Menu"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 15
+Title.Font = Enum.Font.GothamBold
+Title.Parent = TitleBar
+
+-- 閉じるボタン
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -35, 0, 3)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CloseBtn.Text = "✕"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextSize = 16
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.Parent = TitleBar
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 8)
+CloseCorner.Parent = CloseBtn
+
+CloseBtn.MouseButton1Click:Connect(function()
+    Main.Visible = false
+end)
+
+-- ==================== 25×25 ドラッグ可能表示ボタン ====================
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0, 25, 0, 25)
+ToggleButton.Position = UDim2.new(0, 30, 0, 30)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 100, 200)
+ToggleButton.Text = "📍"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextSize = 14
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.Active = true
+ToggleButton.Draggable = true
+ToggleButton.Parent = ScreenGui
+
+local ToggleCorner = Instance.new("UICorner")
+ToggleCorner.CornerRadius = UDim.new(0, 6)
+ToggleCorner.Parent = ToggleButton
+
+-- 表示/非表示切り替え
+local isVisible = true
+ToggleButton.MouseButton1Click:Connect(function()
+    isVisible = not isVisible
+    Main.Visible = isVisible
+    if isVisible then
+        ToggleButton.Text = "📍"
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 100, 200)
+    else
+        ToggleButton.Text = "🔒"
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    end
+end)
+
+-- ==================== プレイヤー選択 ====================
+local PlayerList = Instance.new("TextButton")  -- クリックでリスト表示
+PlayerList.Size = UDim2.new(0.92, 0, 0, 32)
+PlayerList.Position = UDim2.new(0.04, 0, 0, 45)
+PlayerList.BackgroundColor3 = Color3.fromRGB(50, 80, 120)
+PlayerList.Text = "プレイヤーを選択 ▼"
+PlayerList.TextColor3 = Color3.fromRGB(255, 255, 255)
+PlayerList.TextSize = 13
+PlayerList.Font = Enum.Font.GothamSemibold
+PlayerList.Parent = Main
+
+local PlayerCorner = Instance.new("UICorner")
+PlayerCorner.CornerRadius = UDim.new(0, 8)
+PlayerCorner.Parent = PlayerList
+
+-- プレイヤーリスト用 ScrollingFrame
+local PlayerScroll = Instance.new("ScrollingFrame")
+PlayerScroll.Size = UDim2.new(0.92, 0, 0, 100)
+PlayerScroll.Position = UDim2.new(0.04, 0, 0, 82)
+PlayerScroll.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+PlayerScroll.BorderSizePixel = 0
+PlayerScroll.ScrollBarThickness = 4
+PlayerScroll.Visible = false
+PlayerScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+PlayerScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+PlayerScroll.Parent = Main
+
+local PlayerListLayout = Instance.new("UIListLayout")
+PlayerListLayout.Padding = UDim.new(0, 4)
+PlayerListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+PlayerListLayout.Parent = PlayerScroll
+
+-- プレイヤー選択ボタン作成関数
+local function RefreshPlayerList()
+    -- 既存のリストをクリア
+    for _, child in pairs(PlayerScroll:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+    
+    for _, player in pairs(game.Players:GetPlayers()) do
+        if player ~= game.Players.LocalPlayer then  -- 自分以外
+            local Btn = Instance.new("TextButton")
+            Btn.Size = UDim2.new(1, -8, 0, 28)
+            Btn.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+            Btn.Text = player.Name
+            Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            Btn.TextSize = 13
+            Btn.Font = Enum.Font.GothamSemibold
+            Btn.Parent = PlayerScroll
+            
+            local BtnCorner = Instance.new("UICorner")
+            BtnCorner.CornerRadius = UDim.new(0, 6)
+            BtnCorner.Parent = Btn
+            
+            Btn.MouseButton1Click:Connect(function()
+                local localPlayer = game.Players.LocalPlayer
+                if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") and 
+                   player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    
+                    localPlayer.Character.HumanoidRootPart.CFrame = player.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+                    print(player.Name .. " にテレポートしました")
+                    PlayerScroll.Visible = false
+                    PlayerList.Text = "プレイヤーを選択 ▼"
+                end
+            end)
+        end
+    end
+end
+
+-- プレイヤー選択ボタンをクリックしたとき
+PlayerList.MouseButton1Click:Connect(function()
+    PlayerScroll.Visible = not PlayerScroll.Visible
+    if PlayerScroll.Visible then
+        RefreshPlayerList()
+        PlayerList.Text = "プレイヤーを選択 ▲"
+    else
+        PlayerList.Text = "プレイヤーを選択 ▼"
+    end
+end)
+
+-- ==================== 保存リスト（そのまま） ====================
+local SavedPositions = {}
+
+local ListFrame = Instance.new("ScrollingFrame")
+ListFrame.Size = UDim2.new(0.92, 0, 0, 60)   -- 少し小さく調整
+ListFrame.Position = UDim2.new(0.04, 0, 0, 190)
+ListFrame.BackgroundTransparency = 1
+ListFrame.BorderSizePixel = 0
+ListFrame.ScrollBarThickness = 4
+ListFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+ListFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+ListFrame.Parent = Main
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Padding = UDim.new(0, 6)
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Parent = ListFrame
+
+-- 現在の位置を保存ボタン
+local SaveBtn = Instance.new("TextButton")
+SaveBtn.Size = UDim2.new(0.92, 0, 0, 32)
+SaveBtn.Position = UDim2.new(0.04, 0, 0, 155)
+SaveBtn.BackgroundColor3 = Color3.fromRGB(45, 120, 60)
+SaveBtn.Text = "現在の位置を保存"
+SaveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SaveBtn.TextSize = 13
+SaveBtn.Font = Enum.Font.GothamSemibold
+SaveBtn.Parent = Main
+
+local SaveCorner = Instance.new("UICorner")
+SaveCorner.CornerRadius = UDim.new(0, 8)
+SaveCorner.Parent = SaveBtn
+
+SaveBtn.MouseButton1Click:Connect(function()
+    local player = game.Players.LocalPlayer
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local pos = player.Character.HumanoidRootPart.CFrame
+        local index = #SavedPositions + 1
+        table.insert(SavedPositions, pos)
+        
+        local Btn = Instance.new("TextButton")
+        Btn.Size = UDim2.new(1, 0, 0, 28)
+        Btn.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+        Btn.Text = "保存" .. index
+        Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Btn.TextSize = 13
+        Btn.Font = Enum.Font.GothamSemibold
+        Btn.Parent = ListFrame
+        
+        local BtnCorner = Instance.new("UICorner")
+        BtnCorner.CornerRadius = UDim.new(0, 8)
+        BtnCorner.Parent = Btn
+        
+        Btn.MouseButton1Click:Connect(function()
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                player.Character.HumanoidRootPart.CFrame = pos
+            end
+        end)
+    end
+end)
+
+print("テレポートメニュー起動！ プレイヤー選択機能追加済み")
